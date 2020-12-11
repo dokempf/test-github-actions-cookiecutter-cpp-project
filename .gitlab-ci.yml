@@ -1,0 +1,33 @@
+variables:
+  GIT_SUBMODULE_STRATEGY: recursive
+
+.template: &template
+  script:
+    - cmake -E make_directory build
+    - cd build
+    - cmake -DCMAKE_BUILD_TYPE=Debug ..
+    - cmake --build .
+    - ctest
+
+build-and-test:gcc:
+  image: conanio/gcc9
+  <<: *template
+
+build-and-test:clang:
+  image: conanio/clang10
+  <<: *template
+
+
+generate-coverage-report:
+  image: conanio/gcc9
+  before_script:
+    - apt-get install -yy lcov
+  script:
+    - cmake -E make_directory build
+    - cd build
+    - cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS="--coverage" ..
+    - cmake --build .
+    - ctest
+    - lcov --directory ./tests/CMakeFiles/tests.dir --capture --output-file coverage.info
+    - lcov --remove coverage.info '/usr/*' '*/test-github-actions-cookiecutter-cpp-project/tests/*' --output-file coverage.info
+    - bash <(curl -s https://codecov.io/bash) -f coverage.info || echo "Codecov did not collect coverage reports"
